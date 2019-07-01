@@ -23,19 +23,23 @@ class HTTPProtocol implements Protocol
 
     public function route(\Tars\core\Request $request, \Tars\core\Response $response, $tarsConfig = [])  //默认为
     {
-        $uri = $request->data['server']['request_uri'];
-        $verb = $request->data['server']['request_method'];
-        $list = explode('/', $uri);
-
-        if (isset($list[1]) && isset($list[2])) {
-            // 这里的大小写和autoload需要确定一个规则
-            return [
-                'class' => ucwords($list[1]) . 'Controller',
-                'action' => 'action' . ucwords($list[2]),
-            ];
-        } else {
-            return [];
-        }
+        return [
+            'class' => 'LaravelController',
+            'action' => 'actionRoute',
+        ];
+//        $uri = $request->data['server']['request_uri'];
+//        $verb = $request->data['server']['request_method'];
+//        $list = explode('/', $uri);
+//
+//        if (isset($list[1]) && isset($list[2])) {
+//            // 这里的大小写和autoload需要确定一个规则
+//            return [
+//                'class' => ucwords($list[1]) . 'Controller',
+//                'action' => 'action' . ucwords($list[2]),
+//            ];
+//        } else {
+//            return [];
+//        }
     }
 
     public function parseAnnotation($docblock)
