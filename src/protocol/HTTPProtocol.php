@@ -23,6 +23,7 @@ class HTTPProtocol implements Protocol
 
     public function route(\Tars\core\Request $request, \Tars\core\Response $response, $tarsConfig = [])  //默认为
     {
+        //兼容laravel-tars driver
         return [
             'class' => 'LaravelController',
             'action' => 'actionRoute',
