@@ -41,7 +41,7 @@ class Server extends RpcServer
 
     protected $workerNum = 4;
 
-    protected $setting;
+    public $setting;
 
     protected $servicesInfo;
     protected static $paramInfos;
