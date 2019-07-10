@@ -10,7 +10,7 @@ namespace Tars\core;
 
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
-use Swoft\Bootstrap\SwooleEvent;
+use Swoft\Bootstrap\Server\ServerTrait;
 use Swoft\Rpc\Server\Rpc\RpcServer;
 use Tars\App;
 use Tars\Consts;
@@ -22,14 +22,15 @@ use Tars\registry\RouteTable;
 use Tars\report\ServerFWrapper;
 use Tars\config\ConfigWrapper;
 use Tars\monitor\cache\SwooleTableStoreCache;
-use Swoole\Server as SwooleServer;
 
 class Server extends RpcServer
 {
+    use ServerTrait;
+
     protected $tarsConfig;
     private $tarsServerConfig;
     private $tarsClientConfig;
-/** @var \Swoole\Server */
+
     protected $sw;
     protected $masterPidFile;
     protected $managerPidFile;
@@ -40,7 +41,7 @@ class Server extends RpcServer
 
     protected $workerNum = 4;
 
-    public $setting;
+    protected $setting;
 
     protected $servicesInfo;
     protected static $paramInfos;
@@ -57,8 +58,6 @@ class Server extends RpcServer
 
     public function __construct($conf)
     {
-        parent::__construct();//swoft
-
         $this->tarsServerConfig = $conf['tars']['application']['server'];
         $this->tarsClientConfig = $conf['tars']['application']['client'];
 
@@ -277,52 +276,23 @@ class Server extends RpcServer
 
         require_once $this->tarsServerConfig['entrance'];
 
-        //----------------------------------------swoft-------------------------------------------------------
-        // add server type
-        $this->serverSetting['server_type'] = self::TYPE_RPC;
-
-        $this->server = $this->sw;
-
-        // Bind event callback
-//        $listenSetting = $this->getListenTcpSetting();
-//        $setting = array_merge($this->setting, $listenSetting);
-//        $this->server->set($setting);
-//        $this->server->on(SwooleEvent::ON_START, [$this, 'onStart']);
-        $this->server->on(SwooleEvent::ON_WORKER_START, [$this, 'onWorkerStart']);
-//        $this->server->on(SwooleEvent::ON_MANAGER_START, [$this, 'onManagerStart']);
-//        $this->server->on(SwooleEvent::ON_PIPE_MESSAGE, [$this, 'onPipeMessage']);
-
-        //访问私有方法
-//        $getSwooleEvents = function (){
-//            return $this->getSwooleEvents();
-//        };
-//        $getSwooleEvents = $getSwooleEvents->bindTo($this,parent::class);
-//        $swooleEvents = $getSwooleEvents();
-//        $this->registerSwooleEvents($this->server, $swooleEvents);
-
-        // before start
-        $this->beforeServerStart();
-
-
         $this->sw->start();
     }
 
     public function stop():bool
     {
-        return parent::stop();
     }
 
     public function restart()
     {
     }
 
-    public function reload($onlyTask = false)
+    public function reload($onlyTask = false):bool
     {
-        parent::reload($onlyTask);
     }
 
     public function onConnect($server, $fd, $fromId)
-    {var_dump('onConnect');
+    {
     }
 
     public function onFinish($server, $taskId, $data)
@@ -330,12 +300,11 @@ class Server extends RpcServer
     }
 
     public function onClose($server, $fd, $fromId)
-    {var_dump('onClose');
+    {
     }
 
     public function onWorkerStop($server, $workerId)
-    {var_dump('onWorkerStop');
-        parent::onWorkerStop($server,$workerId);
+    {
     }
 
     public function onTimer($server, $interval)
@@ -363,18 +332,14 @@ class Server extends RpcServer
 
     }
 
-    public function onManagerStart(SwooleServer $server)
+    public function onManagerStart()
     {
         // rename manager process
         $this->_setProcessName($this->application . '.' . $this->serverName . ': manager process');
-
-        parent::onManagerStart($server); //swoft
     }
 
     public function onWorkerStart($server, $workerId)
     {
-        parent::onWorkerStart($server,$workerId);//swoft
-
         foreach ($this->adapters as $adapter) {
             $objName = $adapter['objName'];
 
@@ -503,7 +468,7 @@ class Server extends RpcServer
 
     // 这里应该找到对应的解码协议类型,执行解码,并在收到逻辑处理回复后,进行编码和发送数据
     public function onReceive($server, $fd, $fromId, $data)
-    {var_dump('onReceive');//swoft
+    {
         $resp = new Response();
         $resp->fd = $fd;
         $resp->fromFd = $fromId;
