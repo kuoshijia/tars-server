@@ -10,6 +10,7 @@ namespace Tars\core;
 
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
+use Swoft\Bean\BeanFactory;
 use Swoft\Bootstrap\Server\ServerTrait;
 use Swoft\Rpc\Server\Rpc\RpcServer;
 use Tars\App;
@@ -405,6 +406,9 @@ class Server extends RpcServer
                 }
             }
         }
+        //swoole
+        BeanFactory::reload();
+        //swoole
     }
 
 
