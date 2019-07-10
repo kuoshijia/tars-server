@@ -10,6 +10,8 @@ namespace Tars\core;
 
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
+use Swoft\Bootstrap\SwooleEvent;
+use Swoft\Rpc\Server\Rpc\RpcServer;
 use Tars\App;
 use Tars\Consts;
 use Tars\protocol\ProtocolFactory;
@@ -20,13 +22,14 @@ use Tars\registry\RouteTable;
 use Tars\report\ServerFWrapper;
 use Tars\config\ConfigWrapper;
 use Tars\monitor\cache\SwooleTableStoreCache;
+use Swoole\Server as SwooleServer;
 
-class Server
+class Server extends RpcServer
 {
     protected $tarsConfig;
     private $tarsServerConfig;
     private $tarsClientConfig;
-
+/** @var \Swoole\Server */
     protected $sw;
     protected $masterPidFile;
     protected $managerPidFile;
@@ -37,7 +40,7 @@ class Server
 
     protected $workerNum = 4;
 
-    protected $setting;
+    public $setting;
 
     protected $servicesInfo;
     protected static $paramInfos;
@@ -54,6 +57,7 @@ class Server
 
     public function __construct($conf)
     {
+        parent::__construct();
         $this->tarsServerConfig = $conf['tars']['application']['server'];
         $this->tarsClientConfig = $conf['tars']['application']['client'];
 
@@ -272,19 +276,47 @@ class Server
 
         require_once $this->tarsServerConfig['entrance'];
 
+        // add server type
+        $this->serverSetting['server_type'] = self::TYPE_RPC;
+
+        $this->server = $this->sw;
+
+        // Bind event callback
+        $listenSetting = $this->getListenTcpSetting();
+        $setting = array_merge($this->setting, $listenSetting);
+        $this->server->set($setting);
+//        $this->server->on(SwooleEvent::ON_START, [$this, 'onStart']);
+//        $this->server->on(SwooleEvent::ON_WORKER_START, [$this, 'onWorkerStart']);
+//        $this->server->on(SwooleEvent::ON_MANAGER_START, [$this, 'onManagerStart']);
+        $this->server->on(SwooleEvent::ON_PIPE_MESSAGE, [$this, 'onPipeMessage']);
+
+        //访问私有方法
+        $getSwooleEvents = function (){
+            return $this->getSwooleEvents();
+        };
+        $getSwooleEvents = $getSwooleEvents->bindTo($this,parent::class);
+        $swooleEvents = $getSwooleEvents();
+        $this->registerSwooleEvents($this->server, $swooleEvents);
+
+        // before start
+        $this->beforeServerStart();
+
+
         $this->sw->start();
     }
 
-    public function stop()
+    public function stop():bool
     {
+        return parent::stop();
     }
 
     public function restart()
     {
     }
 
-    public function reload()
+    public function reload($onlyTask = false)
     {
+        parent::reload($onlyTask);
     }
 
     public function onConnect($server, $fd, $fromId)
@@ -301,6 +333,7 @@ class Server
 
     public function onWorkerStop($server, $workerId)
     {
+        parent::onWorkerStart($server,$workerId);
     }
 
     public function onTimer($server, $interval)
@@ -328,14 +361,16 @@ class Server
 
     }
 
-    public function onManagerStart()
+    public function onManagerStart(SwooleServer $server)
     {
         // rename manager process
         $this->_setProcessName($this->application . '.' . $this->serverName . ': manager process');
+        parent::onManagerStart($server);
     }
 
     public function onWorkerStart($server, $workerId)
     {
+        parent::onWorkerStart($server,$workerId);
         foreach ($this->adapters as $adapter) {
             $objName = $adapter['objName'];
 
